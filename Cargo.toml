@@ -9,5 +9,6 @@ edition = "2018"
 members = ["ffi"]
 
 [dependencies]
+alga = "0.9"
 num-traits = "0.2"
 superslice = "1"

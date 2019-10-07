@@ -6,16 +6,14 @@ use crate::{fail, Error};
 use crate::{Scalar, Vector};
 
 // TODO: require alga::linear::NormedSpace to get norm() method for vectors?
-pub fn make_centripetal_kochanek_bartels_spline<S, V, F>(
+pub fn make_centripetal_kochanek_bartels_spline<S, V>(
     positions: &[V],
     tcb: &[[S; 3]],
     closed: bool,
-    get_length: F,
 ) -> Result<PiecewiseCubicCurve<S, V>, Error>
 where
     S: Scalar,
     V: Vector<S>,
-    F: Fn(V) -> S,
 {
     if positions.len() < 2 {
         fail!("At least two positions are required");
@@ -45,7 +43,7 @@ where
     for i in 0..positions.len() - 1 {
         let x0 = positions[i];
         let x1 = positions[i + 1];
-        let delta = get_length(x1 - x0).sqrt();
+        let delta = (x1 - x0).norm().sqrt();
         if delta == zero() {
             fail!("Repeated positions are not possible");
         }

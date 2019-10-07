@@ -7,7 +7,7 @@ use crate::{
     PiecewiseCubicCurve, Scalar, Vector,
 };
 
-pub struct AsdfSpline<S, V> {
+pub struct AsdfSpline<S: Scalar, V: Vector<S>> {
     path: PiecewiseCubicCurve<S, V>,
     t2s: PiecewiseCubicCurve<S, S>, // Created via MonotoneCubicSpline
     grid: Box<[S]>,
@@ -15,13 +15,12 @@ pub struct AsdfSpline<S, V> {
 }
 
 impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
-    pub fn new<F: Fn(V) -> S>(
+    pub fn new(
         positions: &[V],
         times: &[Option<S>],
         speeds: &[Option<S>],
         tcb: &[[S; 3]],
         closed: bool,
-        get_length: F,
     ) -> Result<AsdfSpline<S, V>, Error> {
         if positions.len() < 2 {
             fail!("At least two positions are required");
@@ -32,7 +31,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         if speeds.len() != positions.len() {
             fail!("Same number of speed values as positions are required");
         }
-        let path = make_centripetal_kochanek_bartels_spline(positions, tcb, closed, &get_length)?;
+        let path = make_centripetal_kochanek_bartels_spline(positions, tcb, closed)?;
 
         let mut t2s_times = Vec::new();
         let mut t2s_speeds = Vec::new();
@@ -69,7 +68,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         let mut lengths_at_missing_times = Vec::<S>::new();
         lengths.push(zero());
         for i in 0..path.grid().len() - 1 {
-            let length = path.segment_length(i, &get_length);
+            let length = path.segment_length(i);
             if missing_times.iter().any(|&x| x == i) {
                 lengths_at_missing_times.push(*lengths.last().unwrap());
                 *lengths.last_mut().unwrap() += length;
@@ -98,23 +97,19 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         })
     }
 
-    pub fn evaluate<F>(&self, t: S, get_length: F) -> V
-    where
-        F: Fn(V) -> S,
+    pub fn evaluate(&self, t: S) -> V
     {
         self.path
-            .evaluate(self.s2u(self.t2s.evaluate(t), get_length))
+            .evaluate(self.s2u(self.t2s.evaluate(t)))
     }
 
-    pub fn evaluate_velocity<F>(&self, t: S, get_length: F) -> V
-    where
-        F: Fn(V) -> S,
+    pub fn evaluate_velocity(&self, t: S) -> V
     {
         let speed = self.t2s.evaluate_velocity(t);
         let mut tangent = self
             .path
-            .evaluate_velocity(self.s2u(self.t2s.evaluate(t), &get_length));
-        let tangent_length = get_length(tangent);
+            .evaluate_velocity(self.s2u(self.t2s.evaluate(t)));
+        let tangent_length = tangent.norm();
         if tangent_length != zero() {
             tangent /= tangent_length;
         }
@@ -127,9 +122,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
 
     /// If s is outside, return clipped u.
     /// This is only supposed to be used with `f32`.
-    fn s2u<F>(&self, s: S, get_length: F) -> S
-    where
-        F: Fn(V) -> S,
+    fn s2u(&self, s: S) -> S
     {
         // TODO: proper accuracy (a bit less than single-precision?)
         // TODO: a separate version for f64?
@@ -147,7 +140,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         s -= self.s_grid[index];
         let u0 = self.path.grid()[index];
         let u1 = self.path.grid()[index + 1];
-        let func = |u| self.path.segment_partial_length(index, u0, u, &get_length) - s;
+        let func = |u| self.path.segment_partial_length(index, u0, u) - s;
         bisect(func, u0, u1, accuracy, 50)
     }
 }
@@ -171,10 +164,9 @@ mod tests {
             &[None, None],
             &[],
             false,
-            get_length,
         )
         .unwrap();
-        assert_eq!(s.evaluate(1.5, get_length), 1.5);
+        assert_eq!(s.evaluate(1.5), 1.5);
     }
 
     #[test]
@@ -185,10 +177,9 @@ mod tests {
             &[None, None],
             &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
-            get_length,
         )
         .unwrap();
-        assert_eq!(s.evaluate(1.5, get_length), 2.0);
+        assert_eq!(s.evaluate(1.5), 2.0);
     }
 
     #[test]
@@ -199,9 +190,8 @@ mod tests {
             &[None, None],
             &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
-            get_length,
         )
         .unwrap();
-        assert_eq!(s.evaluate(4.0, get_length), 2.0);
+        assert_eq!(s.evaluate(4.0), 2.0);
     }
 }
