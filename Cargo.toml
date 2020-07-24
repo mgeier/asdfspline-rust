@@ -12,3 +12,4 @@ members = ["ffi"]
 num-traits = "0.2"
 superslice = "1"
 thiserror = "1.0"
+alga = "0.9.3"

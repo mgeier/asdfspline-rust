@@ -33,10 +33,11 @@ Using [cargo-readme](https://github.com/livioribeiro/cargo-readme) (`cargo insta
 cargo readme -o README.md
 ```
 */
-use std::fmt::Debug;
-use std::ops::{Add, Div, DivAssign, Mul, Sub};
+//use std::fmt::Debug;
+//use std::ops::{Add, Div, DivAssign, Mul, Sub};
+use std::ops::DivAssign;
 
-use num_traits::{Float, FromPrimitive, NumAssign};
+//use num_traits::{Float, FromPrimitive, NumAssign};
 
 pub mod asdfspline;
 pub mod centripetalkochanekbartelsspline;
@@ -52,28 +53,16 @@ pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
 
 /// A trait that is automatically implemented for all types that can be used as scalars,
 /// e.g. time values.
-pub trait Scalar: Float + NumAssign + FromPrimitive + Debug {}
+pub trait Scalar: alga::general::RealField {}
 
-impl<T: Float + NumAssign + FromPrimitive + Debug> Scalar for T {}
+impl<T: alga::general::RealField> Scalar for T {}
 
 /// A trait that is automatically implemented for all types that can be used as positions,
 /// polynomial coefficients, tangent vectors etc.
-pub trait Vector<S>
-where
-    S: Scalar,
-    Self: Copy,
-    Self: Add<Output = Self> + Sub<Output = Self>,
-    Self: Mul<S, Output = Self> + Div<S, Output = Self>,
-    Self: DivAssign<S>,
-{
-}
+pub trait Vector<S: Scalar>: alga::linear::VectorSpace<Field = S> {}
 
-impl<S, T> Vector<S> for T
-where
-    S: Scalar,
-    Self: Copy,
-    Self: Add<Output = Self> + Sub<Output = Self>,
-    Self: Mul<S, Output = Self> + Div<S, Output = Self>,
-    Self: DivAssign<S>,
-{
-}
+impl<S: Scalar, T: alga::linear::VectorSpace<Field = S>> Vector<S> for T {}
+
+pub trait VectorWithNorm<S: Scalar>: alga::linear::NormedSpace<RealField = S, ComplexField = S> + DivAssign<S> {}
+
+impl<S: Scalar, T: alga::linear::NormedSpace<RealField = S, ComplexField = S> + DivAssign<S>> VectorWithNorm<S> for T {}

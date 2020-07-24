@@ -2,7 +2,7 @@ use num_traits::zero;
 use superslice::Ext; // for slice::upper_bound_by()
 
 use crate::utilities::bisect;
-use crate::{MonotoneCubicSpline, PiecewiseCubicCurve, Scalar, Vector};
+use crate::{MonotoneCubicSpline, PiecewiseCubicCurve, Scalar, Vector, VectorWithNorm};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error<S: Scalar> {
@@ -80,14 +80,18 @@ pub struct AsdfPosSpline<S, V> {
     s_grid: Box<[S]>,
 }
 
-impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
-    pub fn new<F: Fn(V) -> S>(
+impl<S, V> AsdfPosSpline<S, V>
+where
+    S: Scalar,
+    S: Vector<S>,  // for t2s
+    V: VectorWithNorm<S>,
+{
+    pub fn new(
         positions: &[V],
         times: &[Option<S>],
         speeds: &[Option<S>],
         tcb: &[[S; 3]],
         closed: bool,
-        get_length: F,
     ) -> Result<AsdfPosSpline<S, V>, Error<S>> {
         use Error::*;
         if positions.len() + closed as usize != times.len() {
@@ -107,7 +111,6 @@ impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
             positions,
             tcb,
             closed,
-            &get_length,
         )?;
 
         let mut t2s_times = Vec::new();
@@ -145,7 +148,7 @@ impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
         let mut lengths_at_missing_times = Vec::<S>::new();
         lengths.push(zero());
         for i in 0..path.grid().len() - 1 {
-            let length = path.segment_length(i, &get_length);
+            let length = path.segment_length(i);
             if missing_times.iter().any(|&x| x == i) {
                 lengths_at_missing_times.push(*lengths.last().unwrap());
                 *lengths.last_mut().unwrap() += length;
@@ -201,23 +204,18 @@ impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
         })
     }
 
-    pub fn evaluate<F>(&self, t: S, get_length: F) -> V
-    where
-        F: Fn(V) -> S,
-    {
+    pub fn evaluate(&self, t: S) -> V {
         self.path
-            .evaluate(self.s2u(self.t2s.evaluate(t), get_length))
+            .evaluate(self.s2u(self.t2s.evaluate(t)))
     }
 
-    pub fn evaluate_velocity<F>(&self, t: S, get_length: F) -> V
-    where
-        F: Fn(V) -> S,
+    pub fn evaluate_velocity(&self, t: S) -> V
     {
         let speed = self.t2s.evaluate_velocity(t);
         let mut tangent = self
             .path
-            .evaluate_velocity(self.s2u(self.t2s.evaluate(t), &get_length));
-        let tangent_length = get_length(tangent);
+            .evaluate_velocity(self.s2u(self.t2s.evaluate(t)));
+        let tangent_length = tangent.norm();
         if tangent_length != zero() {
             tangent /= tangent_length;
         }
@@ -230,9 +228,7 @@ impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
 
     /// If s is outside, return clipped u.
     /// This is only supposed to be used with `f32`.
-    fn s2u<F>(&self, s: S, get_length: F) -> S
-    where
-        F: Fn(V) -> S,
+    fn s2u(&self, s: S) -> S
     {
         // TODO: proper accuracy (a bit less than single-precision?)
         // TODO: a separate version for f64?
@@ -250,7 +246,7 @@ impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
         s -= self.s_grid[index];
         let u0 = self.path.grid()[index];
         let u1 = self.path.grid()[index + 1];
-        let func = |u| self.path.segment_partial_length(index, u0, u, &get_length) - s;
+        let func = |u| self.path.segment_partial_length(index, u0, u) - s;
         bisect(func, u0, u1, accuracy, 50)
     }
 }
@@ -262,10 +258,6 @@ mod tests {
 
     type AsdfPosSpline1 = AsdfPosSpline<f32, f32>;
 
-    fn get_length(x: f32) -> f32 {
-        x.abs()
-    }
-
     #[test]
     fn simple_linear() {
         let s = AsdfPosSpline1::new(
@@ -274,10 +266,9 @@ mod tests {
             &[None, None],
             &[],
             false,
-            get_length,
         )
         .unwrap();
-        assert_eq!(s.evaluate(1.5, get_length), 1.5);
+        assert_eq!(s.evaluate(1.5), 1.5);
     }
 
     #[test]
@@ -288,10 +279,9 @@ mod tests {
             &[None, None],
             &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
-            get_length,
         )
         .unwrap();
-        assert_eq!(s.evaluate(1.5, get_length), 2.0);
+        assert_eq!(s.evaluate(1.5), 2.0);
     }
 
     #[test]
@@ -302,9 +292,8 @@ mod tests {
             &[None, None],
             &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
-            get_length,
         )
         .unwrap();
-        assert_eq!(s.evaluate(4.0, get_length), 2.0);
+        assert_eq!(s.evaluate(4.0), 2.0);
     }
 }

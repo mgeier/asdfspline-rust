@@ -1,4 +1,6 @@
-use num_traits::{one, zero, Float, FromPrimitive};
+use num_traits::{one, zero, FromPrimitive};
+
+use crate::Scalar;
 
 /// <https://en.wikipedia.org/wiki/Bisection_method>
 ///
@@ -6,7 +8,7 @@ use num_traits::{one, zero, Float, FromPrimitive};
 /// (whichever has a function value closer to zero).
 pub fn bisect<T, F>(f: F, mut xmin: T, mut xmax: T, xtol: T, max_calls: usize) -> T
 where
-    T: Float,
+    T: Scalar,
     F: Fn(T) -> T,
 {
     assert!(xmin <= xmax);
@@ -63,9 +65,9 @@ where
 /// If used with `f64`, this will still only have `f32` accuracy!
 ///
 /// See also https://pomax.github.io/bezierinfo/legendre-gauss.html
-pub fn gauss_legendre13<T: Float, F>(f: F, a: T, b: T) -> T
+pub fn gauss_legendre13<T, F>(f: F, a: T, b: T) -> T
 where
-    T: Float + FromPrimitive,
+    T: Scalar + FromPrimitive,
     F: Fn(T) -> T,
 {
     // TODO: separate versions for f32 and f64?

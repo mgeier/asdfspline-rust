@@ -71,18 +71,14 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         &self.grid
     }
 
-    pub fn segment_length<F>(&self, index: usize, get_length: F) -> S
-    where
-        F: Fn(V) -> S,
+    pub fn segment_length(&self, index: usize) -> S
     {
         let t0 = self.grid[index];
         let t1 = self.grid[index + 1];
-        self.segment_partial_length(index, t0, t1, get_length)
+        self.segment_partial_length(index, t0, t1)
     }
 
-    pub fn segment_partial_length<F>(&self, index: usize, a: S, b: S, get_length: F) -> S
-    where
-        F: Fn(V) -> S,
+    pub fn segment_partial_length(&self, index: usize, a: S, b: S) -> S
     {
         assert!(a <= b);
         let coeffs = self.segments[index];
@@ -91,7 +87,7 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         assert!(t0 <= a);
         assert!(b <= t1);
 
-        let speed = |t| get_length(PiecewiseCubicCurve::segment_velocity(t, t0, t1, &coeffs));
+        let speed = |t| PiecewiseCubicCurve::segment_velocity(t, t0, t1, &coeffs).norm();
         gauss_legendre13(speed, a, b)
     }
 
