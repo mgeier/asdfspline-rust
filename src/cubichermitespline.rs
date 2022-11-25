@@ -79,8 +79,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
                 (x0_delta * (-3_f32 * t0 - 3_f32 * t1)
                     + x1_delta * (3_f32 * t0 + 3_f32 * t1)
                     + v0 * (-t0 - 2_f32 * t1)
-                    + v1 * (-2_f32 * t0
-                    - t1))
+                    + v1 * (-2_f32 * t0 - t1))
                     * delta.powi(-2),
                 (x0_delta * 2_f32 + x1_delta * -2_f32 + v0 + v1) * delta.powi(-2),
             ]);
