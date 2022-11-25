@@ -66,18 +66,22 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
             let t1_2 = t1.powi(2);
 
             segments.push([
-                          delta.powi(-2) * (
-            x0_delta * t1_2 * (-3*t0 + t1) + x1_delta * t0_2*(-t0 + 3*t1) + v0 * -t0*t1_2 + v1 *   -t0_2*t1
-            ),
-                          delta.powi(-2) * (
-             x0_delta *          6*t0*t1 + x1_delta *           -6*t0*t1 + v0 *  t1*(2*t0 + t1) + v1 *  t0*(t0 + 2*t1)
-            ),
-                          delta.powi(-2) * (
-              x0_delta *    -3*t0 - 3*t1 + x1_delta *        3*t0 + 3*t1 + v0 *      -t0 - 2*t1 + v1 *      -2*t0 - t1
-            ),
-                          delta.powi(-2) * (
-                     x0_delta *        2 + x1_delta *                 -2 + v0 *               1 + v1 *               1
-            ),
+                delta.powi(-2)
+                    * (x0_delta * t1_2 * (-3_f32 * t0 + t1)
+                        + x1_delta * t0_2 * (-t0 + 3_f32 * t1)
+                        + v0 * -t0 * t1_2
+                        + v1 * -t0_2 * t1),
+                delta.powi(-2)
+                    * (x0_delta * 6_f32 * t0 * t1
+                        + x1_delta * -6_f32 * t0 * t1
+                        + v0 * t1 * (2_f32 * t0 + t1)
+                        + v1 * t0 * (t0 + 2_f32 * t1)),
+                delta.powi(-2_f32)
+                    * (x0_delta * -3_f32 * t0 - 3_f32 * t1 + x1_delta * 3_f32 * t0 + 3_f32 * t1 + v0 * -t0
+                        - 2_f32 * t1
+                        + v1 * -2_f32 * t0
+                        - t1),
+                delta.powi(-2) * (x0_delta * 2_f32 + x1_delta * -2_f32 + v0 + v1),
             ]);
         }
         use crate::piecewisecubiccurve::Error as Other;
