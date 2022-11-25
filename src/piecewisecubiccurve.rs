@@ -52,7 +52,6 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
 impl<V: Vector> Spline<V> for PiecewiseCubicCurve<V> {
     fn evaluate(&self, t: f32) -> V {
         let (t, t0, t1, a) = self.get_segment(t);
-        let t = (t - t0) / (t1 - t0);
         ((a[3] * t + a[2]) * t + a[1]) * t + a[0]
     }
 
@@ -67,7 +66,6 @@ where
 {
     fn evaluate_velocity(&self, t: f32) -> V {
         let (t, t0, t1, a) = self.get_segment(t);
-        let t = (t - t0) / (t1 - t0);
         ((a[3] * 3.0 * t + a[2] * 2.0) * t + a[1]) / (t1 - t0)
     }
 }
