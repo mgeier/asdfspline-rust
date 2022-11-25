@@ -42,24 +42,42 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
         }
         let mut segments = Vec::with_capacity(segments_len);
         for i in 0..segments_len {
-            let x0 = positions[i];
-            let x1 = positions[i + 1];
-            let v0 = tangents[2 * i];
-            let v1 = tangents[2 * i + 1];
             let t0 = grid[i];
             let t1 = grid[i + 1];
             let delta = t1 - t0;
+            let x0_delta = positions[i] / delta;
+            let x1_delta = positions[i + 1] / delta;
+            let v0 = tangents[2 * i];
+            let v1 = tangents[2 * i + 1];
 
-            // [a0]   [ 1,  0,          0,      0] [x0]
-            // [a1] = [ 0,  0,      delta,      0] [x1]
-            // [a2]   [-3,  3, -2 * delta, -delta] [v0]
-            // [a3]   [ 2, -2,      delta,  delta] [v1]
+            // [a0]                     [x0 / delta]
+            // [a1] = delta**(-2) * M * [x1 / delta]
+            // [a2]                     [v0        ]
+            // [a3]                     [v1        ]
+
+            // M =
+            //
+            // [t1**2*(-3*t0 + t1), t0**2*(-t0 + 3*t1),      -t0*t1**2,      -t0**2*t1]
+            // [           6*t0*t1,           -6*t0*t1, t1*(2*t0 + t1), t0*(t0 + 2*t1)]
+            // [      -3*t0 - 3*t1,        3*t0 + 3*t1,     -t0 - 2*t1,     -2*t0 - t1]
+            // [                 2,                 -2,              1,              1]
+
+            let t0_2 = t0.powi(2);
+            let t1_2 = t1.powi(2);
 
             segments.push([
-                x0,
-                v0 * delta,
-                x0 * -3.0 + x1 * 3.0 - v0 * 2.0 * delta - v1 * delta,
-                x0 * 2.0 - x1 * 2.0 + v0 * delta + v1 * delta,
+                          delta.powi(-2) * (
+            x0_delta * t1_2 * (-3*t0 + t1) + x1_delta * t0_2*(-t0 + 3*t1) + v0 * -t0*t1_2 + v1 *   -t0_2*t1
+            ),
+                          delta.powi(-2) * (
+             x0_delta *          6*t0*t1 + x1_delta *           -6*t0*t1 + v0 *  t1*(2*t0 + t1) + v1 *  t0*(t0 + 2*t1)
+            ),
+                          delta.powi(-2) * (
+              x0_delta *    -3*t0 - 3*t1 + x1_delta *        3*t0 + 3*t1 + v0 *      -t0 - 2*t1 + v1 *      -2*t0 - t1
+            ),
+                          delta.powi(-2) * (
+                     x0_delta *        2 + x1_delta *                 -2 + v0 *               1 + v1 *               1
+            ),
             ]);
         }
         use crate::piecewisecubiccurve::Error as Other;
